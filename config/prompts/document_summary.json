@@ -1,0 +1,7 @@
+{
+    "name": "document_summary",
+    "template": "Aşağıdaki metni özetle. Özet kısa ve öz olmalı, ana noktaları içermeli.\n\nMetin:\n${text}\n\nÖzet:",
+    "variables": {
+        "text": ""
+    }
+} 

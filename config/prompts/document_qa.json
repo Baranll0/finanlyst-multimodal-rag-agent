@@ -1,0 +1,8 @@
+{
+    "name": "document_qa",
+    "template": "Aşağıdaki bağlamı kullanarak soruyu yanıtla. Eğer bağlamda yanıt için yeterli bilgi yoksa, \"Bu konuda yeterli bilgim yok\" de.\n\nBağlam:\n${context}\n\nSoru: ${question}\n\nYanıt:",
+    "variables": {
+        "context": "",
+        "question": ""
+    }
+} 

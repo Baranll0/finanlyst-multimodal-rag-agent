@@ -1,0 +1,7 @@
+{
+    "name": "financial_analysis",
+    "template": "Aşağıdaki finansal verileri analiz et ve yorumla:\n\n${data}\n\nLütfen şu başlıklar altında değerlendirme yap:\n1. Genel Durum\n2. Trendler\n3. Riskler\n4. Öneriler\n\nYanıt:",
+    "variables": {
+        "data": ""
+    }
+} 
