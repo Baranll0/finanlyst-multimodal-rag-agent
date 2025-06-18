@@ -4,6 +4,15 @@ from typing import List, Tuple, Optional
 import numpy as np
 import faiss
 from core.embeddings import EmbeddingModel
+from pinecone import Pinecone, ServerlessSpec
+from sentence_transformers import SentenceTransformer
+from dotenv import load_dotenv
+
+load_dotenv()
+
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 class VectorStore:
     def __init__(
@@ -105,3 +114,58 @@ class VectorStore:
             # Metinleri yükle
             with open(texts_file, "rb") as f:
                 self.texts = pickle.load(f)
+
+class PineconeVectorStore:
+    def __init__(self, session_id, index_name="finanlyst-index", dimension=384):
+        self.dimension = dimension  # Önce tanımla
+        # Pinecone örneği oluştur
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+
+        # Index nesnesi oluştur veya al
+        if index_name not in pc.list_indexes().names():
+            pc.create_index(
+                name=index_name,
+                dimension=self.dimension,
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'
+                )
+            )
+        self.index = pc.Index(index_name)
+        self.session_id = session_id
+        self.embedder = SentenceTransformer(EMBEDDING_MODEL)
+
+    def add_texts(self, texts, ids=None, metadatas=None):
+        vectors = self.embedder.encode(texts).tolist()
+        if ids is None:
+            ids = [str(self.session_id) + "_" + str(i) for i in range(len(texts))]
+        # Her embedding'e session_id metadata'sı ekle
+        if metadatas is None:
+            metadatas = [{"session_id": self.session_id} for _ in texts]
+        else:
+            for meta in metadatas:
+                meta["session_id"] = self.session_id
+        self.index.upsert(vectors=[(id, vec, meta) for id, vec, meta in zip(ids, vectors, metadatas)])
+
+    def query(self, query_text, top_k=5):
+        query_vec = self.embedder.encode([query_text])[0].tolist()
+        # Sadece bu session_id'ye ait embedding'leri getir
+        results = self.index.query(
+            query_vec,
+            top_k=top_k,
+            include_metadata=True,
+            filter={"session_id": {"$eq": self.session_id}}
+        )
+        hits = results.get('matches', [])
+        return [
+            {
+                'id': hit['id'],
+                'score': hit['score'],
+                'metadata': hit.get('metadata', {})
+            }
+            for hit in hits
+        ]
+
+    def delete(self, ids):
+        self.index.delete(ids=ids)

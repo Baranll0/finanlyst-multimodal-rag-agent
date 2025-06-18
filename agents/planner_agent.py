@@ -86,6 +86,33 @@ Lütfen görevi analiz et ve uygun ajanı seç."""
         Returns:
             Dict[str, Any]: İşleme sonuçları
         """
+        # Eğer input_data dict ve prompt+file_content içeriyorsa, promptu ana talimat olarak kullan
+        if isinstance(input_data, dict) and "prompt" in input_data and "file_content" in input_data:
+            prompt = input_data["prompt"]
+            file_content = input_data["file_content"]
+            # Dosya bir DataFrame ise stringe çevir
+            if hasattr(file_content, 'to_string'):
+                file_content_str = file_content.to_string(index=False)
+            else:
+                file_content_str = str(file_content)
+            # Kullanıcı promptunu ve dosya içeriğini birleştirerek LLM'e gönder
+            llm_prompt = f"""Aşağıda bir kullanıcı talimatı ve ilgili dosya içeriği verilmiştir. Talimatı dosya içeriğine göre yerine getir. Yanıtını sadece Türkçe ver.
+
+Talimat:
+{prompt}
+
+---
+
+Dosya İçeriği:
+{file_content_str}
+
+Yanıt:"""
+            response = self.llm_client.generate(llm_prompt, max_tokens=1024)
+            self._add_to_history("user", llm_prompt)
+            self._add_to_history("assistant", response)
+            return {"result": response}
+
+        # Eski mantık: tek başına metin veya veri
         # Görev türünü belirle
         task_type = self._determine_task_type(input_data)
         
